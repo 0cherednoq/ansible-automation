@@ -1,0 +1,39 @@
+---
+# Rust — через rustup, per-user для пользователя деплоя (штатный способ).
+- name: Проверить, установлен ли rustup
+  ansible.builtin.stat:
+    path: "{{ runtimes_owner_home }}/.cargo/bin/rustc"
+  register: rustc_stat
+
+- name: Установить Rust через rustup
+  ansible.builtin.shell:
+    cmd: "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain {{ rust_channel }} --no-modify-path"
+  become_user: "{{ runtimes_owner }}"
+  when: not rustc_stat.stat.exists
+  changed_when: true
+
+- name: Обновить существующий Rust до актуального
+  ansible.builtin.command: "{{ runtimes_owner_home }}/.cargo/bin/rustup update {{ rust_channel }}"
+  become_user: "{{ runtimes_owner }}"
+  when: rustc_stat.stat.exists
+  register: rustup_update
+  changed_when: "'unchanged' not in rustup_update.stdout"
+
+- name: Добавить cargo в PATH пользователя деплоя
+  ansible.builtin.lineinfile:
+    path: "{{ runtimes_owner_home }}/.bashrc"
+    line: 'export PATH="$HOME/.cargo/bin:$PATH"'
+    create: true
+    owner: "{{ runtimes_owner }}"
+    group: "{{ deploy_group | default(runtimes_owner) }}"
+    mode: "0644"
+
+- name: Показать версию Rust
+  ansible.builtin.command: "{{ runtimes_owner_home }}/.cargo/bin/rustc --version"
+  become_user: "{{ runtimes_owner }}"
+  register: rustc_version
+  changed_when: false
+
+- name: Вывести версию Rust
+  ansible.builtin.debug:
+    msg: "{{ rustc_version.stdout }}"

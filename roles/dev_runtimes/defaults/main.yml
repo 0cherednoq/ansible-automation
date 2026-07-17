@@ -1,0 +1,14 @@
+---
+# Версии рантаймов. Меняйте здесь или переопределяйте через -e / group_vars.
+nodejs_major: "22"        # LTS-ветка Node.js (NodeSource)
+go_version: "1.22.5"      # https://go.dev/dl/
+php_version: "8.3"        # ppa:ondrej/php
+rust_channel: stable      # канал rustup
+
+# Куда ставить общесистемные бинарники (uv, go).
+runtimes_bin_dir: /usr/local/bin
+go_install_dir: /usr/local/go
+
+# Rust устанавливается per-user для root.
+runtimes_owner: root
+runtimes_owner_home: /root

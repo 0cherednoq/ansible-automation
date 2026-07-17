@@ -1,0 +1,15 @@
+---
+# Установка языковых рантаймов на хост: uv, Node.js, pm2, Go, Rust, PHP.
+#
+# Всё сразу:            ansible-playbook playbooks/05-install-runtimes.yml
+# Только некоторые:     ansible-playbook playbooks/05-install-runtimes.yml --tags node,go
+# Доступные теги:       uv, node, pm2, go, rust, php
+#
+# Примечание: деплой приложения работает через Docker, поэтому эти рантаймы
+# нужны на хосте только как инструменты (сборка, вспомогательные скрипты,
+# pm2 для не-докеризованных процессов), а не для самого приложения.
+- name: Установить языковые рантаймы
+  hosts: app
+  become: true
+  roles:
+    - dev_runtimes

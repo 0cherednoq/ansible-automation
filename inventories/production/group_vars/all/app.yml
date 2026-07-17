@@ -1,0 +1,32 @@
+---
+# --- Приложение и деплой ---
+
+# Имя приложения выводится из app_repo: последний сегмент URL без .git.
+# Например https://gitea.example.com/OWNER/parser-avito.git -> parser-avito
+# При необходимости можно переопределить вручную: -e app_name=custom
+app_name: "{{ app_repo | regex_replace('/+$', '') | regex_replace('\\.git$', '') | regex_replace('.*/', '') }}"
+# Приложение разворачивается в домашнем каталоге пользователя подключения
+# (для root — /root/{{ app_name }}). Каталог создаётся самим git при клоне.
+app_root: "{{ ansible_env.HOME }}/{{ app_name }}"
+app_version: main
+
+# Compose-файлы проекта (пути относительно app_root, должны быть в Git).
+# Несколько файлов объединяются в ОДИН docker compose проект через -f
+# (порядок важен: более поздние переопределяют более ранние).
+# Переопределить набор на запуск (напр. поднять только часть):
+#   mise run deploy -e '{"docker_compose_files":["compose.app.yaml","compose.override.yaml"]}'
+docker_compose_files:
+  - compose.app.yaml
+  - compose.infra.yaml
+  - compose.tasks.yaml
+  - compose.tunnel.yaml
+  - compose.override.yaml
+
+# Собирается из списка: "-f compose.app.yaml -f compose.infra.yaml ...".
+docker_compose_file_args: >-
+  {{ docker_compose_files | map('regex_replace', '^(.+)$', '-f \1') | join(' ') }}
+# Образы собираются на сервере (--build). --wait дожидается healthcheck:
+# битый контейнер завалит деплой, а не пройдёт как успех.
+docker_deploy_command: >-
+  docker compose {{ docker_compose_file_args }} up -d --build --remove-orphans
+  --wait --wait-timeout 120

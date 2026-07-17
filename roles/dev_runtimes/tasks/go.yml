@@ -1,0 +1,45 @@
+---
+# Go — официальный tarball с go.dev, распаковка в /usr/local/go.
+- name: Определить текущую версию Go
+  ansible.builtin.command: "{{ go_install_dir }}/bin/go version"
+  register: go_check
+  changed_when: false
+  failed_when: false
+
+- name: Скачать архив Go
+  ansible.builtin.get_url:
+    url: "https://go.dev/dl/go{{ go_version }}.linux-amd64.tar.gz"
+    dest: "/tmp/go{{ go_version }}.linux-amd64.tar.gz"
+    mode: "0644"
+  when: go_version not in (go_check.stdout | default(''))
+
+- name: Удалить прежнюю установку Go
+  ansible.builtin.file:
+    path: "{{ go_install_dir }}"
+    state: absent
+  when: go_version not in (go_check.stdout | default(''))
+
+- name: Распаковать Go в /usr/local
+  ansible.builtin.unarchive:
+    src: "/tmp/go{{ go_version }}.linux-amd64.tar.gz"
+    dest: /usr/local
+    remote_src: true
+  when: go_version not in (go_check.stdout | default(''))
+
+- name: Добавить Go в PATH для всех пользователей
+  ansible.builtin.copy:
+    dest: /etc/profile.d/go.sh
+    content: |
+      export PATH="$PATH:{{ go_install_dir }}/bin"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Показать версию Go
+  ansible.builtin.command: "{{ go_install_dir }}/bin/go version"
+  register: go_version_out
+  changed_when: false
+
+- name: Вывести версию Go
+  ansible.builtin.debug:
+    msg: "{{ go_version_out.stdout }}"

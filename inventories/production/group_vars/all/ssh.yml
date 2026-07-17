@@ -1,0 +1,18 @@
+---
+# --- SSH: ключ и прокси-подключение ---
+
+# Ключ создаётся на машине, с которой запускается Ansible.
+ssh_private_key_path: "{{ lookup('env', 'HOME') }}/.ssh/myapp_ed25519"
+ssh_public_key_path: "{{ ssh_private_key_path }}.pub"
+
+# Единый прокси для SSH-подключения ко всем серверам (например Tor).
+# Включить на запуск: -e ssh_proxy_enabled=true
+# Требуется netcat-openbsd на управляющей машине (nc с поддержкой -X).
+ssh_proxy_enabled: false
+ssh_proxy_host: 127.0.0.1
+ssh_proxy_port: 9150          # Tor SOCKS5 по умолчанию
+# SOCKS5 = -X 5. Для SOCKS4 замените на -X 4.
+ssh_proxy_command: "nc -X 5 -x {{ ssh_proxy_host }}:{{ ssh_proxy_port }} %h %p"
+# Подставляется во все подключения; при выключенном прокси — пусто.
+ansible_ssh_common_args: >-
+  {{ '-o ProxyCommand="' ~ ssh_proxy_command ~ '"' if ssh_proxy_enabled | bool else '' }}

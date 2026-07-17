@@ -1,0 +1,27 @@
+---
+# --- Пакеты сервера ---
+
+# Устанавливаются в 03-prepare-server.yml.
+system_packages:
+  - docker.io
+  - docker-compose-v2
+
+# Базовые утилиты (устанавливаются в 02-harden-ssh.yml).
+base_utils:
+  - git
+  - curl
+  - wget
+  - ca-certificates
+  - gnupg
+  - tar
+  - gzip
+  - bzip2
+  - xz-utils
+  - zip
+  - unzip
+  - htop
+  - vim
+  - rsync
+  - net-tools
+  - ufw
+  - jq

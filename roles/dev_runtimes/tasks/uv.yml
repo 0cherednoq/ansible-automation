@@ -1,0 +1,26 @@
+---
+# uv — быстрый менеджер пакетов/окружений Python (astral.sh).
+# Ставим общесистемно в /usr/local/bin через официальный установщик.
+- name: Проверить, установлен ли uv
+  ansible.builtin.command: "{{ runtimes_bin_dir }}/uv --version"
+  register: uv_check
+  changed_when: false
+  failed_when: false
+
+- name: Установить uv через официальный скрипт
+  ansible.builtin.shell:
+    cmd: "curl -LsSf https://astral.sh/uv/install.sh | sh"
+  environment:
+    UV_INSTALL_DIR: "{{ runtimes_bin_dir }}"
+    UV_UNMANAGED_INSTALL: "{{ runtimes_bin_dir }}"
+  when: uv_check.rc != 0
+  changed_when: true
+
+- name: Показать версию uv
+  ansible.builtin.command: "{{ runtimes_bin_dir }}/uv --version"
+  register: uv_version
+  changed_when: false
+
+- name: Вывести версию uv
+  ansible.builtin.debug:
+    msg: "{{ uv_version.stdout }}"

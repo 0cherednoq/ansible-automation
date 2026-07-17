@@ -1,0 +1,40 @@
+---
+- name: Первый вход по паролю и настройка SSH-ключа для root
+  hosts: bootstrap
+  become: true
+  gather_facts: true
+  vars:
+    generated_key_comment: "ansible-{{ app_name }}"
+  pre_tasks:
+    - name: Создать каталог .ssh на контроллере
+      ansible.builtin.file:
+        path: "{{ ssh_private_key_path | dirname }}"
+        state: directory
+        mode: "0700"
+      delegate_to: localhost
+      become: false
+
+    - name: Сгенерировать локальную пару ключей Ed25519
+      community.crypto.openssh_keypair:
+        path: "{{ ssh_private_key_path }}"
+        type: ed25519
+        comment: "{{ generated_key_comment }}"
+        mode: "0600"
+      delegate_to: localhost
+      become: false
+
+  tasks:
+    - name: Установить публичный ключ для root
+      ansible.posix.authorized_key:
+        user: root
+        key: "{{ lookup('ansible.builtin.file', ssh_public_key_path) }}"
+        state: present
+        exclusive: false
+
+    - name: Проверить вход по созданному ключу
+      ansible.builtin.wait_for_connection:
+        timeout: 30
+      vars:
+        ansible_password: ""
+        ansible_ssh_private_key_file: "{{ ssh_private_key_path }}"
+      become: false

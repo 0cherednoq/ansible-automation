@@ -1,0 +1,70 @@
+# mise-конфиг управляющей машины (Linux/macOS/WSL).
+# Установить окружение:  mise install
+# Список задач:          mise tasks
+# Запуск:                mise run <task> [доп. флаги ansible]
+#
+# Любые аргументы после имени задачи прокидываются в ansible-playbook, напр.:
+#   mise run deploy --limit srv1
+#   mise run deploy -e app_version=v1.2.3
+#   mise run deploy --ask-vault-pass
+
+[tools]
+python = "3.12"
+# Ansible ставится в изолированное окружение pipx; даёт ansible/ansible-playbook/ansible-galaxy.
+"pipx:ansible" = "latest"
+
+[settings]
+# Автоматически ставить недостающие инструменты при первом запуске задачи.
+experimental = true
+
+[env]
+# ansible.cfg уже лежит в корне — Ansible подхватит его сам.
+ANSIBLE_FORCE_COLOR = "1"
+
+[tasks.setup]
+description = "Установить коллекции Ansible (запустить один раз)"
+run = "ansible-galaxy collection install -r requirements.yml"
+
+[tasks.bootstrap]
+description = "01 · Первый вход по паролю и установка SSH-ключа root"
+run = "ansible-playbook playbooks/01-bootstrap-ssh.yml --ask-pass"
+
+[tasks.harden]
+description = "02 · Отключить пароль в SSH и поставить базовые утилиты"
+run = "ansible-playbook playbooks/02-harden-ssh.yml"
+
+[tasks.prepare]
+description = "03 · Подготовка сервера (Docker, локаль)"
+run = "ansible-playbook playbooks/03-prepare-server.yml"
+
+[tasks.deploy]
+description = "04 · Деплой/редеплой (доп.: -e app_version=<tag>, --limit, --ask-vault-pass)"
+run = "ansible-playbook playbooks/04-deploy.yml"
+
+[tasks.runtimes]
+description = "05 · Языковые рантаймы (доп.: --tags node,go)"
+run = "ansible-playbook playbooks/05-install-runtimes.yml"
+
+[tasks.check]
+description = "Dry-run деплоя без изменений (--check --diff)"
+run = "ansible-playbook playbooks/04-deploy.yml --check --diff"
+
+[tasks.syntax]
+description = "Проверить синтаксис всех плейбуков"
+run = """
+for pb in playbooks/*.yml; do
+  echo "== $pb =="
+  ansible-playbook "$pb" --syntax-check
+done
+"""
+
+[tasks.provision]
+description = "Полный цикл по порядку: setup → bootstrap → harden → prepare → deploy"
+run = """
+set -e
+ansible-galaxy collection install -r requirements.yml
+ansible-playbook playbooks/01-bootstrap-ssh.yml --ask-pass
+ansible-playbook playbooks/02-harden-ssh.yml
+ansible-playbook playbooks/03-prepare-server.yml
+ansible-playbook playbooks/04-deploy.yml
+"""

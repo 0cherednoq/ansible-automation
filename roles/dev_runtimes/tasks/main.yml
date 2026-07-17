@@ -1,0 +1,36 @@
+---
+# Оркестратор: подключает задачи каждого рантайма по тегам.
+# Запуск всего:            ansible-playbook playbooks/05-install-runtimes.yml
+# Запуск выборочно:        ... --tags node,go
+- name: Установить общие зависимости
+  ansible.builtin.apt:
+    name:
+      - curl
+      - ca-certificates
+      - tar
+      - xz-utils
+      - build-essential
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  tags: [always]
+
+- name: Установить uv
+  ansible.builtin.import_tasks: uv.yml
+  tags: [uv]
+
+- name: Установить Node.js и pm2
+  ansible.builtin.import_tasks: nodejs.yml
+  tags: [node, pm2]
+
+- name: Установить Go
+  ansible.builtin.import_tasks: go.yml
+  tags: [go]
+
+- name: Установить Rust
+  ansible.builtin.import_tasks: rust.yml
+  tags: [rust]
+
+- name: Установить PHP
+  ansible.builtin.import_tasks: php.yml
+  tags: [php]

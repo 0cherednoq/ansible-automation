@@ -1,0 +1,32 @@
+---
+- name: Подготовить сервер приложения
+  hosts: app
+  become: true
+  tasks:
+    - name: Обновить кэш APT и установить системные пакеты
+      ansible.builtin.apt:
+        name: "{{ system_packages }}"
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Установить пакет локалей
+      ansible.builtin.apt:
+        name: locales
+        state: present
+
+    - name: Включить ru_RU.UTF-8
+      community.general.locale_gen:
+        name: ru_RU.UTF-8
+        state: present
+
+    - name: Сделать русскую локаль системной
+      ansible.builtin.command: update-locale LANG=ru_RU.UTF-8 LC_ALL=ru_RU.UTF-8
+      register: locale_update
+      changed_when: true
+
+    - name: Включить и запустить Docker
+      ansible.builtin.systemd_service:
+        name: docker
+        enabled: true
+        state: started

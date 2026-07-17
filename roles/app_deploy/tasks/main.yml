@@ -1,0 +1,60 @@
+---
+- name: Проверить обязательные параметры деплоя
+  ansible.builtin.assert:
+    that:
+      - app_repo | length > 0
+      - "'OWNER/REPOSITORY' not in app_repo"
+      - docker_compose_files | length > 0
+    fail_msg: "Укажите реальный app_repo и хотя бы один compose-файл в docker_compose_files."
+
+# Приватный репозиторий Gitea по HTTP: токен передаём через HTTP-заголовок,
+# чтобы он не оседал в .git/config (в отличие от токена в URL).
+# Токен храните в Ansible Vault, задавайте переменную app_git_token.
+- name: Клонировать репозиторий или получить изменения из Git
+  ansible.builtin.git:
+    repo: "{{ app_repo }}"
+    dest: "{{ app_root }}"
+    version: "{{ app_version }}"
+    update: true
+    force: true
+  environment: "{{ git_auth_env }}"
+  vars:
+    git_auth_env: >-
+      {{
+        {'GIT_CONFIG_COUNT': '1',
+         'GIT_CONFIG_KEY_0': 'http.extraHeader',
+         'GIT_CONFIG_VALUE_0': 'Authorization: token ' ~ app_git_token}
+        if (app_git_token | default('') | length > 0) else {}
+      }}
+  no_log: "{{ app_git_token | default('') | length > 0 }}"
+  register: git_result
+
+- name: Проверить наличие всех Docker Compose-файлов
+  ansible.builtin.stat:
+    path: "{{ app_root }}/{{ item }}"
+  loop: "{{ docker_compose_files }}"
+  register: compose_files_stat
+
+- name: Остановить деплой, если какой-то Compose-файл отсутствует
+  ansible.builtin.assert:
+    that: item.stat.isreg | default(false)
+    fail_msg: >-
+      Файл {{ app_root }}/{{ item.item }} не найден.
+      Проверьте docker_compose_files и содержимое репозитория.
+    quiet: true
+  loop: "{{ compose_files_stat.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Собрать и запустить приложение через Docker Compose
+  ansible.builtin.command:
+    cmd: "{{ docker_deploy_command }}"
+    chdir: "{{ app_root }}"
+  register: docker_deploy
+  changed_when: true
+
+- name: Удалить неиспользуемые Docker-образы
+  ansible.builtin.command:
+    cmd: docker image prune -f
+  register: docker_prune
+  changed_when: "'Total reclaimed space: 0B' not in docker_prune.stdout"

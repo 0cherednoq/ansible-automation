@@ -1,0 +1,16 @@
+# IDE
+.idea/
+.vscode/
+
+# Python / venv
+.venv/
+__pycache__/
+*.pyc
+
+# Ansible
+*.retry
+.vault_pass
+vault_pass.txt
+
+# Локальные оверрайды инвентаря
+inventories/**/host_vars/**/local.yml
