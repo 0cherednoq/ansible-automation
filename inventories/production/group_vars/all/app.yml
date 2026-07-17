@@ -7,7 +7,7 @@
 app_name: "{{ app_repo | regex_replace('/+$', '') | regex_replace('\\.git$', '') | regex_replace('.*/', '') }}"
 # Приложение разворачивается в домашнем каталоге пользователя подключения
 # (для root — /root/{{ app_name }}). Каталог создаётся самим git при клоне.
-app_root: "{{ ansible_env.HOME }}/{{ app_name }}"
+app_root: "{{ ansible_facts['env']['HOME'] }}/{{ app_name }}"
 app_version: main
 
 # Compose-файлы проекта (пути относительно app_root, должны быть в Git).

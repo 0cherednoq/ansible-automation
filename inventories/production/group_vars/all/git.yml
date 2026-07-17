@@ -3,8 +3,12 @@
 
 # Приватный репозиторий Gitea клонируется по HTTPS.
 app_repo: "https://gitea.example.com/OWNER/REPOSITORY.git"
-# Токен доступа Gitea (scope read:repository). НЕ храните здесь в открытом виде —
-# положите в Vault, например group_vars/all/vault.yml,
-# и зашифруйте: ansible-vault encrypt group_vars/all/vault.yml
+# Токен доступа (Gitea: read:repository; GitHub: PAT с доступом к репо;
+# GitLab: read_repository). НЕ храните здесь в открытом виде — положите в Vault,
+# например group_vars/all/vault.yml, и зашифруйте:
+#   ansible-vault encrypt group_vars/all/vault.yml
 # Оставьте пустым для публичных репозиториев.
 app_git_token: ""
+# Имя пользователя для Basic-авторизации. Для токена подходит любое непустое
+# значение; oauth2 работает для GitHub/GitLab/Gitea.
+app_git_user: oauth2
