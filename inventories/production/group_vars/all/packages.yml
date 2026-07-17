@@ -13,6 +13,7 @@ base_utils:
   - wget
   - ca-certificates
   - gnupg
+  - openssl
   - tar
   - gzip
   - bzip2

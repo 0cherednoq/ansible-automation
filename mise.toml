@@ -3,10 +3,9 @@
 # Список задач:          mise tasks
 # Запуск:                mise run <task> [доп. флаги ansible]
 #
-# Любые аргументы после имени задачи прокидываются в ansible-playbook, напр.:
-#   mise run deploy --limit srv1
-#   mise run deploy -e app_version=v1.2.3
-#   mise run deploy --ask-vault-pass
+# Токен приватного репозитория (один раз):  mise run token <ВАШ_ТОКЕН>
+# Деплой:                                    mise run deploy
+# Vault-пароль и расшифровка токена подхватываются автоматически.
 
 [tools]
 python = "3.12"
@@ -20,10 +19,36 @@ experimental = true
 [env]
 # ansible.cfg уже лежит в корне — Ansible подхватит его сам.
 ANSIBLE_FORCE_COLOR = "1"
+# Файл с паролем Vault (создаётся задачей token, в .gitignore).
+VAULT_PASS_FILE = ".vault_pass"
+# Зашифрованный файл с токеном.
+VAULT_FILE = "inventories/production/group_vars/all/vault.yml"
 
 [tasks.setup]
 description = "Установить коллекции Ansible (запустить один раз)"
 run = "ansible-galaxy collection install -r requirements.yml"
+
+[tasks.token]
+description = "Сохранить git-токен в зашифрованный Vault: mise run token <ТОКЕН>"
+run = """
+set -e
+TOKEN="{{arg(name='token')}}"
+if [ -z "$TOKEN" ]; then
+  echo "Использование: mise run token <ТОКЕН>"; exit 1
+fi
+# Пароль Vault: создаётся один раз случайным, лежит локально (в .gitignore).
+if [ ! -f "$VAULT_PASS_FILE" ]; then
+  openssl rand -base64 32 > "$VAULT_PASS_FILE"
+  chmod 600 "$VAULT_PASS_FILE"
+  echo "Создан $VAULT_PASS_FILE (пароль Vault)."
+fi
+# Записать токен во временный файл и зашифровать его в VAULT_FILE.
+umask 077
+printf 'app_git_token: "%s"\\n' "$TOKEN" > .vault.tmp
+ansible-vault encrypt --vault-password-file "$VAULT_PASS_FILE" --output "$VAULT_FILE" .vault.tmp
+rm -f .vault.tmp
+echo "Токен сохранён и зашифрован в $VAULT_FILE."
+"""
 
 [tasks.bootstrap]
 description = "01 · Первый вход по паролю и установка SSH-ключа root"
@@ -38,8 +63,12 @@ description = "03 · Подготовка сервера (Docker, локаль)"
 run = "ansible-playbook playbooks/03-prepare-server.yml"
 
 [tasks.deploy]
-description = "04 · Деплой/редеплой (доп.: -e app_version=<tag>, --limit, --ask-vault-pass)"
-run = "ansible-playbook playbooks/04-deploy.yml"
+description = "04 · Деплой/редеплой (Vault подхватывается автоматически; доп.: -e app_version=<tag>, --limit)"
+run = """
+vault=""
+[ -f "$VAULT_PASS_FILE" ] && vault="--vault-password-file $VAULT_PASS_FILE"
+ansible-playbook playbooks/04-deploy.yml $vault "$@"
+"""
 
 [tasks.runtimes]
 description = "05 · Языковые рантаймы (доп.: --tags node,go)"
@@ -47,7 +76,11 @@ run = "ansible-playbook playbooks/05-install-runtimes.yml"
 
 [tasks.check]
 description = "Dry-run деплоя без изменений (--check --diff)"
-run = "ansible-playbook playbooks/04-deploy.yml --check --diff"
+run = """
+vault=""
+[ -f "$VAULT_PASS_FILE" ] && vault="--vault-password-file $VAULT_PASS_FILE"
+ansible-playbook playbooks/04-deploy.yml --check --diff $vault "$@"
+"""
 
 [tasks.syntax]
 description = "Проверить синтаксис всех плейбуков"
@@ -62,9 +95,11 @@ done
 description = "Полный цикл по порядку: setup → bootstrap → harden → prepare → deploy"
 run = """
 set -e
+vault=""
+[ -f "$VAULT_PASS_FILE" ] && vault="--vault-password-file $VAULT_PASS_FILE"
 ansible-galaxy collection install -r requirements.yml
 ansible-playbook playbooks/01-bootstrap-ssh.yml --ask-pass
 ansible-playbook playbooks/02-harden-ssh.yml
 ansible-playbook playbooks/03-prepare-server.yml
-ansible-playbook playbooks/04-deploy.yml
+ansible-playbook playbooks/04-deploy.yml $vault
 """

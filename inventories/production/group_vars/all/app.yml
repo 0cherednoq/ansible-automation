@@ -17,10 +17,10 @@ app_version: main
 #   mise run deploy -e '{"docker_compose_files":["compose.app.yaml","compose.override.yaml"]}'
 docker_compose_files:
   - compose.app.yaml
-  - compose.infra.yaml
-  - compose.tasks.yaml
-  - compose.tunnel.yaml
-  - compose.override.yaml
+#  - compose.infra.yaml
+#  - compose.tasks.yaml
+#  - compose.tunnel.yaml
+#  - compose.override.yaml
 
 # Собирается из списка: "-f compose.app.yaml -f compose.infra.yaml ...".
 docker_compose_file_args: >-

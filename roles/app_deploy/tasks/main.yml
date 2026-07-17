@@ -19,11 +19,13 @@
     force: true
   environment: "{{ git_auth_env }}"
   vars:
+    # Basic-авторизация работает у GitHub/GitLab/Gitea (токен как пароль).
     git_auth_env: >-
       {{
         {'GIT_CONFIG_COUNT': '1',
          'GIT_CONFIG_KEY_0': 'http.extraHeader',
-         'GIT_CONFIG_VALUE_0': 'Authorization: token ' ~ app_git_token}
+         'GIT_CONFIG_VALUE_0': 'Authorization: Basic '
+           ~ (((app_git_user | default('oauth2')) ~ ':' ~ app_git_token) | b64encode)}
         if (app_git_token | default('') | length > 0) else {}
       }}
   no_log: "{{ app_git_token | default('') | length > 0 }}"

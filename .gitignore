@@ -11,6 +11,7 @@ __pycache__/
 *.retry
 .vault_pass
 vault_pass.txt
+.vault.tmp
 
 # Локальные оверрайды инвентаря
 inventories/**/host_vars/**/local.yml
