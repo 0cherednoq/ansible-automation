@@ -17,8 +17,8 @@
 python = "3.12"
 # Ansible ставится в изолированное окружение pipx; даёт ansible/ansible-playbook/ansible-galaxy.
 "pipx:ansible" = "latest"
-# dotenver — генерация .env из аннотированного .env.example (Jinja2 + Faker).
-"pipx:dotenver" = "latest"
+# uv — даёт uvx для запуска dotenver (env:gen ставит его на лету, заранее не нужно).
+uv = "latest"
 
 [settings]
 # Автоматически ставить недостающие инструменты при первом запуске задачи.

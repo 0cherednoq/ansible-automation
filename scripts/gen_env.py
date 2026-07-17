@@ -38,19 +38,20 @@ def main() -> int:
     template = Path(args.template)
     if not template.exists():
         print(f"[ОШИБКА] Шаблон не найден: {template}\n"
-              f"Сначала скачайте его: mise run env:fetch", file=sys.stderr)
+              f"Создайте/положите env/.env.example и повторите.", file=sys.stderr)
         return 1
-    if shutil.which("dotenver") is None:
-        print("[ОШИБКА] dotenver не найден. Установка: uv tool install dotenver "
-              "(или mise install).", file=sys.stderr)
+    if shutil.which("uvx") is None:
+        print("[ОШИБКА] uvx (из uv) не найден. Установите uv: mise install "
+              "(или https://docs.astral.sh/uv/).", file=sys.stderr)
         return 1
 
-    # dotenver создаёт .env рядом с шаблоном (.env.example -> .env),
-    # сохраняя значения уже существующего .env.
-    res = subprocess.run(["dotenver", "-r"], cwd=template.parent,
-                         capture_output=True, text=True)
+    # dotenver запускается через uvx — он сам поставит пакет в изолированное
+    # окружение. Создаёт .env рядом с шаблоном (.env.example -> .env),
+    # сохраняя значения уже существующего .env. Вывод не прячем — видно процесс.
+    print(f"Запускаю dotenver (uvx) для {template} ...", flush=True)
+    res = subprocess.run(["uvx", "dotenver", "-r"], cwd=str(template.parent))
     if res.returncode != 0:
-        print(f"[ОШИБКА] dotenver: {res.stderr.strip()}", file=sys.stderr)
+        print(f"[ОШИБКА] dotenver завершился с кодом {res.returncode}.", file=sys.stderr)
         return 1
 
     output = template.with_name(template.name.replace(".example", ""))
