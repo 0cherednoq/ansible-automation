@@ -25,8 +25,11 @@ docker_compose_files:
 # Собирается из списка: "-f compose.app.yaml -f compose.infra.yaml ...".
 docker_compose_file_args: >-
   {{ docker_compose_files | map('regex_replace', '^(.+)$', '-f \1') | join(' ') }}
-# Образы собираются на сервере (--build). --wait дожидается healthcheck:
-# битый контейнер завалит деплой, а не пройдёт как успех.
-docker_deploy_command: >-
-  docker compose {{ docker_compose_file_args }} up -d --build --remove-orphans
+# Деплой разбит на два этапа, чтобы видеть прогресс в логе Ansible:
+# 1) сборка образов на сервере (--progress=plain = полный построчный вывод);
+docker_build_command: >-
+  docker compose {{ docker_compose_file_args }} build --progress=plain
+# 2) запуск; --wait дожидается healthcheck — битый контейнер завалит деплой.
+docker_up_command: >-
+  docker compose {{ docker_compose_file_args }} up -d --remove-orphans
   --wait --wait-timeout 120

@@ -48,12 +48,27 @@
   loop_control:
     label: "{{ item.item }}"
 
-- name: Собрать и запустить приложение через Docker Compose
+- name: Собрать образы (Docker Compose build)
   ansible.builtin.command:
-    cmd: "{{ docker_deploy_command }}"
+    cmd: "{{ docker_build_command }}"
     chdir: "{{ app_root }}"
-  register: docker_deploy
+  register: docker_build
   changed_when: true
+
+- name: Показать лог сборки
+  ansible.builtin.debug:
+    msg: "{{ (docker_build.stdout ~ '\n' ~ docker_build.stderr).split('\n') }}"
+
+- name: Запустить приложение (Docker Compose up)
+  ansible.builtin.command:
+    cmd: "{{ docker_up_command }}"
+    chdir: "{{ app_root }}"
+  register: docker_up
+  changed_when: true
+
+- name: Показать лог запуска
+  ansible.builtin.debug:
+    msg: "{{ (docker_up.stdout ~ '\n' ~ docker_up.stderr).split('\n') }}"
 
 - name: Удалить неиспользуемые Docker-образы
   ansible.builtin.command:
