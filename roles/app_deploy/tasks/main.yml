@@ -31,6 +31,28 @@
   no_log: "{{ app_git_token | default('') | length > 0 }}"
   register: git_result
 
+- name: Проверить наличие локального .env
+  ansible.builtin.stat:
+    path: "{{ env_file_local }}"
+  delegate_to: localhost
+  become: false
+  register: env_local
+
+- name: Скопировать .env на сервер
+  ansible.builtin.copy:
+    src: "{{ env_file_local }}"
+    dest: "{{ env_file_remote }}"
+    mode: "0600"
+  when: env_local.stat.exists
+  no_log: true
+
+- name: Предупредить, если локальный .env отсутствует
+  ansible.builtin.debug:
+    msg: >-
+      Локальный {{ env_file_local }} не найден — .env на сервер не скопирован.
+      Сгенерируйте его: mise run env
+  when: not env_local.stat.exists
+
 - name: Проверить наличие всех Docker Compose-файлов
   ansible.builtin.stat:
     path: "{{ app_root }}/{{ item }}"

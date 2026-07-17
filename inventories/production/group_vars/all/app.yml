@@ -10,6 +10,11 @@ app_name: "{{ app_repo | regex_replace('/+$', '') | regex_replace('\\.git$', '')
 app_root: "{{ ansible_facts['env']['HOME'] }}/{{ app_name }}"
 app_version: main
 
+# Локальный .env (генерируется `mise run env`) копируется на сервер в app_root.
+# Docker Compose читает .env из каталога проекта автоматически.
+env_file_local: "{{ playbook_dir }}/../env/.env"
+env_file_remote: "{{ app_root }}/.env"
+
 # Compose-файлы проекта (пути относительно app_root, должны быть в Git).
 # Несколько файлов объединяются в ОДИН docker compose проект через -f
 # (порядок важен: более поздние переопределяют более ранние).
@@ -28,7 +33,7 @@ docker_compose_file_args: >-
 # Деплой разбит на два этапа, чтобы видеть прогресс в логе Ansible:
 # 1) сборка образов на сервере (--progress=plain = полный построчный вывод);
 docker_build_command: >-
-  docker compose {{ docker_compose_file_args }} build --progress=plain
+  docker compose --progress plain {{ docker_compose_file_args }} build
 # 2) запуск; --wait дожидается healthcheck — битый контейнер завалит деплой.
 docker_up_command: >-
   docker compose {{ docker_compose_file_args }} up -d --remove-orphans

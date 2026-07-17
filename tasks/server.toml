@@ -1,0 +1,34 @@
+# Категория server: подготовка сервера.
+
+["server:collections"]
+description = "Установить коллекции Ansible (запустить один раз)"
+run = "ansible-galaxy collection install -r requirements.yml"
+
+["server:bootstrap"]
+description = "01 · Первый вход по паролю и установка SSH-ключа root"
+run = "ansible-playbook playbooks/01-bootstrap-ssh.yml --ask-pass"
+
+["server:harden"]
+description = "02 · Отключить пароль в SSH и поставить базовые утилиты"
+run = "ansible-playbook playbooks/02-harden-ssh.yml"
+
+["server:prepare"]
+description = "03 · Подготовка сервера (Docker, локаль)"
+run = "ansible-playbook playbooks/03-prepare-server.yml"
+
+["server:runtimes"]
+description = "05 · Языковые рантаймы (доп.: --tags node,go)"
+run = "ansible-playbook playbooks/05-install-runtimes.yml"
+
+["server:provision"]
+description = "Полный цикл: collections → bootstrap → harden → prepare → deploy"
+run = """
+set -e
+vault=""
+[ -f "$VAULT_PASS_FILE" ] && vault="--vault-password-file $VAULT_PASS_FILE"
+ansible-galaxy collection install -r requirements.yml
+ansible-playbook playbooks/01-bootstrap-ssh.yml --ask-pass
+ansible-playbook playbooks/02-harden-ssh.yml
+ansible-playbook playbooks/03-prepare-server.yml
+ansible-playbook playbooks/04-deploy.yml $vault
+"""

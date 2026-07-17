@@ -15,3 +15,8 @@ vault_pass.txt
 
 # Локальные оверрайды инвентаря
 inventories/**/host_vars/**/local.yml
+
+# Реальные .env (генерируются mise run env) — только локально и на сервере
+env/.env
+env/*.env
+!env/*.env.example
