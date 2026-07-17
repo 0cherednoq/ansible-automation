@@ -1,9 +1,12 @@
 # mise-конфиг управляющей машины (Linux/macOS/WSL).
 # Установить окружение:  mise install
-# Список задач:          mise tasks
+# Список задач:          mise tasks   (кластеризуются по префиксу: server:*, env:* ...)
 # Запуск:                mise run <категория:задача> [доп. флаги]
+# Запуск группы:         mise run 'server:*'
 #
-# Задачи разнесены по категориям в каталоге tasks/ (см. task_config.includes):
+# ПРАВИЛО: в этом файле — только вызовы. Вся логика в scripts/*.sh и scripts/*.py.
+#
+# Категории задач:
 #   server:*      — подготовка сервера (bootstrap, harden, prepare, runtimes, provision)
 #   secrets:*     — секреты (token)
 #   env:*         — работа с .env (annotate, gen)
@@ -29,11 +32,74 @@ VAULT_PASS_FILE = ".vault_pass"
 # Зашифрованный файл с токеном.
 VAULT_FILE = "inventories/production/group_vars/all/vault.yml"
 
-[task_config]
-includes = [
-  "tasks/server.toml",
-  "tasks/secrets.toml",
-  "tasks/env.toml",
-  "tasks/deploy.toml",
-  "tasks/maintenance.toml",
-]
+# ============================================================
+#  server: подготовка сервера
+# ============================================================
+
+[tasks."server:collections"]
+description = "Установить коллекции Ansible (запустить один раз)"
+run = "ansible-galaxy collection install -r requirements.yml"
+
+[tasks."server:bootstrap"]
+description = "01 · Первый вход по паролю и установка SSH-ключа root"
+run = "ansible-playbook playbooks/01-bootstrap-ssh.yml --ask-pass"
+
+[tasks."server:harden"]
+description = "02 · Отключить пароль в SSH и поставить базовые утилиты"
+run = "ansible-playbook playbooks/02-harden-ssh.yml"
+
+[tasks."server:prepare"]
+description = "03 · Подготовка сервера (Docker, локаль)"
+run = "ansible-playbook playbooks/03-prepare-server.yml"
+
+[tasks."server:runtimes"]
+description = "05 · Языковые рантаймы (доп.: --tags node,go)"
+run = "ansible-playbook playbooks/05-install-runtimes.yml"
+
+[tasks."server:provision"]
+description = "Полный цикл: collections → bootstrap → harden → prepare → deploy"
+run = "bash scripts/provision.sh"
+
+# ============================================================
+#  secrets: секреты
+# ============================================================
+
+[tasks."secrets:token"]
+description = "Сохранить git-токен в зашифрованный Vault: mise run secrets:token <ТОКЕН>"
+run = "bash scripts/save_token.sh {{arg(name='token')}}"
+
+# ============================================================
+#  env: работа с .env (пре-деплой)
+# ============================================================
+
+[tasks."env:annotate"]
+description = "Интерактивно расставить аннотации ## dotenver:... в env/.env.example"
+run = "python scripts/annotate_env.py"
+
+[tasks."env:gen"]
+description = "Сгенерировать env/.env из размеченного env/.env.example (dotenver)"
+run = "python scripts/gen_env.py"
+
+# ============================================================
+#  deploy: деплой приложения
+# ============================================================
+
+[tasks."deploy:run"]
+description = "04 · Деплой/редеплой (Vault авто; доп.: -e app_version=<tag>, --limit)"
+run = "bash scripts/deploy.sh"
+
+[tasks."deploy:check"]
+description = "Dry-run деплоя без изменений (--check --diff)"
+run = "bash scripts/deploy_check.sh"
+
+# ============================================================
+#  maintenance: обслуживание
+# ============================================================
+
+[tasks."maintenance:clean"]
+description = "Освободить место на серверах: убрать неиспользуемые образы и build-кэш (volumes НЕ трогает)"
+run = "bash scripts/clean.sh"
+
+[tasks."maintenance:syntax"]
+description = "Проверить синтаксис всех плейбуков"
+run = "bash scripts/syntax_check.sh"
